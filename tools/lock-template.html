@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<!--HTMLTAG-->
+<!--META-->
+<style>
+:root{--c:#7b5cc7;--d:#6447b0;--h:#efe6ff}
+html[data-subject=life]{--c:#3a86c8;--d:#2c6ea8;--h:#e2f3ff}
+html[data-subject=nonlife]{--c:#2f9c78;--d:#237e60;--h:#dcf6ec}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+ background:linear-gradient(160deg,#fde8f3 0%,var(--h) 55%,#e6f7ee 100%);
+ font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#4a3d6b}
+.lk{width:100%;max-width:360px;padding:34px 28px 28px;border-radius:32px;background:#fff6fb;text-align:center;
+ box-shadow:10px 14px 30px rgba(120,90,170,.25),inset -5px -5px 10px rgba(150,110,200,.14),inset 5px 5px 10px #fff}
+.ic{font-size:46px;line-height:1}
+h1{margin:12px 0 6px;font-size:22px;color:var(--c)}
+p{margin:0 0 20px;font-size:14px;color:#8a7ba8;line-height:1.5}
+input{width:100%;padding:14px 16px;border:0;border-radius:18px;background:#fff;font:inherit;font-size:16px;color:#4a3d6b;outline:none;
+ box-shadow:inset 3px 3px 7px rgba(120,90,170,.18),inset -3px -3px 7px #fff}
+input:focus{box-shadow:inset 3px 3px 7px rgba(120,90,170,.18),inset -3px -3px 7px #fff,0 0 0 3px var(--h)}
+button{margin-top:14px;width:100%;padding:14px;border:0;border-radius:18px;background:var(--c);color:#fff;font:inherit;font-size:16px;font-weight:700;cursor:pointer;
+ box-shadow:inset -3px -4px 0 var(--d),5px 7px 14px rgba(120,90,170,.25)}
+button:disabled{opacity:.6;cursor:wait}
+.er{min-height:20px;margin-top:12px;font-size:14px;color:#d9665b}
+.wait .lk form{display:none}
+</style>
+</head>
+<body class="wait">
+<main class="lk">
+  <div class="ic">🔒</div>
+  <h1>보험 퀘스트 섬</h1>
+  <p id="msg">여는 중…</p>
+  <form id="f" autocomplete="on">
+    <input id="pw" type="password" name="password" placeholder="비밀번호" autocomplete="current-password" required>
+    <button id="go" type="submit">들어가기</button>
+    <div class="er" id="er" role="alert"></div>
+  </form>
+</main>
+<script>
+(function(){
+  var SALT="__SALT__",ITER=__ITER__,IV="__IV__",DATA="__DATA__",KK="quest-lock-key";
+  function b(s){var r=atob(s),u=new Uint8Array(r.length);for(var i=0;i<r.length;i++)u[i]=r.charCodeAt(i);return u}
+  function b64(buf){var u=new Uint8Array(buf),s="";for(var i=0;i<u.length;i++)s+=String.fromCharCode(u[i]);return btoa(s)}
+  var S=crypto.subtle;
+  function open(raw){
+    return S.importKey("raw",raw,"AES-GCM",false,["decrypt"])
+      .then(function(k){return S.decrypt({name:"AES-GCM",iv:b(IV)},k,b(DATA))})
+      .then(function(gz){return new Response(new Blob([gz]).stream().pipeThrough(new DecompressionStream("gzip"))).text()});
+  }
+  function show(html){document.open();document.write(html);document.close()}
+  function ask(){document.body.className="";document.getElementById("msg").innerHTML="내부교육용 자료입니다.<br>비밀번호 입력 후 사용가능합니다.<br>(비번문의 이보람총무)";document.getElementById("pw").focus()}
+  var saved=null;try{saved=localStorage.getItem(KK)}catch(e){}
+  if(!S||!window.DecompressionStream){document.getElementById("msg").textContent="이 브라우저에서는 열 수 없어요. 최신 크롬·사파리로 열어 주세요.";return}
+  if(saved){open(b(saved)).then(show,function(){try{localStorage.removeItem(KK)}catch(e){}ask()})}else ask();
+  document.getElementById("f").addEventListener("submit",function(e){
+    e.preventDefault();var btn=document.getElementById("go"),er=document.getElementById("er");
+    btn.disabled=true;btn.textContent="확인 중…";er.textContent="";
+    var pw=document.getElementById("pw").value.normalize("NFC");
+    S.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveBits"])
+      .then(function(k){return S.deriveBits({name:"PBKDF2",hash:"SHA-256",salt:b(SALT),iterations:ITER},k,256)})
+      .then(function(raw){return open(raw).then(function(html){try{localStorage.setItem(KK,b64(raw))}catch(e){}show(html)})})
+      .catch(function(){btn.disabled=false;btn.textContent="들어가기";er.textContent="비밀번호가 맞지 않아요.";var i=document.getElementById("pw");i.select()});
+  });
+})();
+</script>
+</body>
+</html>
